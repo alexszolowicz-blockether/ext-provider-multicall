@@ -1,0 +1,1 @@
+{"root":["./src.ts/_build.ts","./src.ts/_contract.ts","./src.ts/index.ts","./src.ts/multicall.ts","./src.ts/multicaller.ts","./src.ts/provider-multicall.ts","./src.ts/test.ts"],"version":"5.7.2"}

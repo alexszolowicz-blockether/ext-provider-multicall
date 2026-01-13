@@ -100,32 +100,37 @@ export class MulticallProvider extends AbstractProvider {
                     })
                 });
                 runners.push((() => __awaiter(this, void 0, void 0, function* () {
-                    const _data = yield this.subprovider.call({ data, blockTag });
-                    const [_blockNumber, results] = AbiCoder.defaultAbiCoder().decode(["uint", "tuple(bool, bytes)[]"], _data);
-                    const blockNumber = toQuantity(_blockNumber);
-                    if (blockTag !== "latest" && blockTag !== "pending" && blockNumber !== blockTag) {
-                        callQueue.forEach(({ reject }) => {
-                            reject(makeError("backend does not support archive access", "UNSUPPORTED_OPERATION", {
-                                operation: "call(blockTag)",
-                                info: { expectedBlockTag: blockTag, blockNumber }
-                            }));
+                    try {
+                        const _data = yield this.subprovider.call({ data, blockTag });
+                        const [_blockNumber, results] = AbiCoder.defaultAbiCoder().decode(["uint", "tuple(bool, bytes)[]"], _data);
+                        const blockNumber = toQuantity(_blockNumber);
+                        if (blockTag !== "latest" && blockTag !== "pending" && blockNumber !== blockTag) {
+                            callQueue.forEach(({ reject }) => {
+                                reject(makeError("backend does not support archive access", "UNSUPPORTED_OPERATION", {
+                                    operation: "call(blockTag)",
+                                    info: { expectedBlockTag: blockTag, blockNumber }
+                                }));
+                            });
+                        }
+                        this.emit("debug", {
+                            action: "receiveMulticallResult", data,
+                            call: callQueue.map(({ request }, i) => {
+                                return {
+                                    to: request.to, data: request.data,
+                                    status: results[i][0], result: results[i][1]
+                                };
+                            })
                         });
+                        const output = [];
+                        for (let i = 0; i < callQueue.length; i++) {
+                            const result = results[i];
+                            const { resolve } = callQueue[i];
+                            resolve({ status: result[0], data: result[1] });
+                            output.push({ status: result[0], data: result[1] });
+                        }
                     }
-                    this.emit("debug", {
-                        action: "receiveMulticallResult", data,
-                        call: callQueue.map(({ request }, i) => {
-                            return {
-                                to: request.to, data: request.data,
-                                status: results[i][0], result: results[i][1]
-                            };
-                        })
-                    });
-                    const output = [];
-                    for (let i = 0; i < callQueue.length; i++) {
-                        const result = results[i];
-                        const { resolve } = callQueue[i];
-                        resolve({ status: result[0], data: result[1] });
-                        output.push({ status: result[0], data: result[1] });
+                    catch (error) {
+                        callQueue.forEach(({ reject }) => reject(error));
                     }
                 }))());
             }
